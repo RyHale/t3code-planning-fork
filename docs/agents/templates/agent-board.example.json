@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "projectRoot": "C:/path/to/project",
+  "defaultView": "kanban",
+  "runner": {
+    "maxConcurrentCards": 1,
+    "repairCycles": 3
+  },
+  "cards": [
+    {
+      "id": "TASK-example-architectural-pass",
+      "title": "Run architectural pass for the first implementation slice",
+      "state": "Draft",
+      "priority": 3,
+      "area": "Planning",
+      "slice": "Supervisor workflow",
+      "taskRecordPath": "docs/agents/tasks/TASK-example-architectural-pass.md",
+      "slicePlanPath": "docs/agents/slices/supervisor-workflow.md",
+      "dependencies": [],
+      "intentBrief": {
+        "intent": "Shape a rough user request into a runnable, documented task.",
+        "desiredOutcome": "A fresh worker agent can implement the task from a bounded handoff packet.",
+        "acceptanceCriteria": [
+          "Intent, outcome, constraints, non-goals, dependencies, and proof-of-done are documented.",
+          "The board card is not moved to Ready until eligibility passes."
+        ],
+        "constraints": ["Do not implement production code during the architectural pass."],
+        "nonGoals": ["Autonomous queue running"],
+        "openDecisions": []
+      },
+      "parallelism": {
+        "safe": "conditional",
+        "reason": "Safe only after dependencies and write scopes are known.",
+        "conflictsWith": [],
+        "allowedWriteScopes": ["docs/agents/**", ".t3/agent-board.json"]
+      },
+      "runtime": {
+        "attemptCount": 0
+      },
+      "createdAt": "2026-05-05T00:00:00.000Z",
+      "updatedAt": "2026-05-05T00:00:00.000Z"
+    }
+  ],
+  "graphLinks": [],
+  "createdAt": "2026-05-05T00:00:00.000Z",
+  "updatedAt": "2026-05-05T00:00:00.000Z"
+}
