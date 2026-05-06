@@ -28,6 +28,7 @@ patch is installed elsewhere:
 - `PROJECT.md` when present
 - `CONTEXT.md` or `CONTEXT-MAP.md` when present
 - `docs/agents/project-master-plan.md`
+- `docs/agents/symphony-conformance.md`
 - `docs/agents/slices/`
 - `docs/agents/tasks/`
 - `docs/agents/templates/` when present
@@ -63,6 +64,47 @@ The current patch attaches to upstream T3 Code through these areas:
 
 If upstream T3 Code changes navigation, project routing, RPC transport,
 provider orchestration, or chat layout, start repair from these files.
+
+## Upstream Tracking
+
+This local repository tracks upstream T3 Code for awareness only:
+
+```text
+upstream fetch: https://github.com/pingdotgg/t3code.git
+upstream push: DISABLED
+```
+
+Use `git fetch upstream --prune` to see upstream changes. Do not push planning
+fork changes to upstream unless the maintainer workflow explicitly changes.
+
+To inspect upstream drift without merging:
+
+```powershell
+git fetch upstream --prune
+git log --oneline --decorate main..upstream/main
+git diff --stat main..upstream/main
+```
+
+Merge or rebase only after reviewing `PATCH.md` attachment points.
+
+## Symphony Alignment
+
+The planning workflow is intended to mimic Symphony's long-running project
+shape while using a local board file instead of Linear.
+
+Core mapping:
+
+- Symphony issue tracker -> T3 local `.t3/agent-board.json`.
+- Symphony issue -> T3 work card.
+- Symphony issue identifier -> stable board card ID.
+- Symphony workpad comment -> linked task record under `docs/agents/tasks/`.
+- Symphony per-issue workspace -> T3 card workspace.
+- Symphony status surface -> Planning Kanban/table/dependency views.
+
+Keep `WORKFLOW.md` front matter close to Symphony's canonical top-level keys:
+`tracker`, `polling`, `workspace`, `hooks`, `agent`, and `codex`. T3-specific
+fields should be documented as extensions in `WORKFLOW.md` and summarized in
+`docs/agents/symphony-conformance.md`.
 
 ## Data Model
 

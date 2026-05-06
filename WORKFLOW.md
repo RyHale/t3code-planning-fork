@@ -1,18 +1,33 @@
 ---
 tracker:
   kind: t3-local
-  boardFile: .t3/agent-board.json
+  board_file: .t3/agent-board.json
+  active_states:
+    - Ready
+    - Running
+    - Diagnosing
+    - Reviewing
+  terminal_states:
+    - Done
+    - Canceled
 polling:
-  intervalSeconds: 15
+  interval_ms: 15000
 workspace:
   root: .t3/workspaces
   strategy: per-card
-runner:
-  maxConcurrentCards: 1
-  repairCycles: 3
 agent:
+  max_concurrent_agents: 1
+  max_turns: 20
+  max_retry_backoff_ms: 300000
+  max_repair_cycles: 3
   command: codex app-server
-  reviewAgent: fresh
+  review_agent: fresh
+codex:
+  command: codex app-server
+  approval_policy: implementation-defined
+  thread_sandbox: workspace-write
+  turn_sandbox_policy:
+    type: workspaceWrite
 ---
 
 # T3 Code Agent Board Workflow
@@ -22,6 +37,33 @@ Status: Draft v1
 Purpose: define the project-local workflow for T3 Code's future
 Symphony-style authoritative work board, board runner, and autonomous delivery
 loop.
+
+## Symphony Alignment
+
+This workflow intentionally follows the OpenAI Symphony shape:
+
+- `WORKFLOW.md` is the repository-owned policy and runtime contract.
+- Front matter uses the Symphony top-level sections where possible:
+  `tracker`, `polling`, `workspace`, `hooks`, `agent`, and `codex`.
+- The board runner is the scheduler/orchestrator. It claims eligible work,
+  creates or reuses isolated workspaces, launches Codex, retries recoverable
+  failures, reconciles state, and exposes operator-visible status.
+- The prompt body below is the per-card task policy. Runtime behavior belongs
+  in front matter; ticket/card handling rules belong in this Markdown body.
+
+T3-specific behavior is an extension, not a replacement:
+
+- `tracker.kind: t3-local` means the local `.t3/agent-board.json` file is the
+  tracker instead of Linear.
+- `tracker.board_file` is the project-local authoritative board path.
+- `workspace.strategy: per-card` means workspace keys are derived from board
+  card IDs instead of external issue identifiers.
+- `agent.max_repair_cycles` and `agent.review_agent` define this fork's
+  self-repair and fresh-review behavior.
+
+Unknown future Symphony fields should be ignored unless this fork implements
+them. Unknown T3 extension fields must be documented here before agents rely on
+them.
 
 ## Source Of Truth
 
@@ -278,6 +320,12 @@ When a card enters `Ready`, the board runner should:
 10. Move the card to `Done`, `Review`, or `Needs Decision`.
 11. Continue to the next eligible `Ready` card.
 
+The first implementation turn should receive the full rendered card prompt:
+workflow, project context, linked task record, linked slice plan, board card
+fields, and attempt history. Continuation turns should send only continuation
+guidance and the current board/task delta; do not resend the full prompt unless
+the prior thread cannot be resumed.
+
 Routine implementation failures should stay inside the autonomous loop:
 
 - test failure
@@ -295,6 +343,45 @@ After three failed repair cycles, the card moves to `Needs Decision` with a
 summary of what was tried, what failed, likely cause, and the exact question for
 the user.
 
+## Polling, Claiming, Retry, And Reconciliation
+
+The board runner should behave like a Symphony orchestrator:
+
+1. Load and validate `WORKFLOW.md`.
+2. Reconcile running cards before dispatch.
+3. Read `.t3/agent-board.json`.
+4. Select candidate cards from `tracker.active_states`.
+5. Skip cards already claimed, running, terminal, blocked by dependencies, or
+   missing the `Ready` eligibility bar.
+6. Sort candidates by priority, then oldest created/updated timestamp, then
+   stable card ID.
+7. Claim up to `agent.max_concurrent_agents` cards.
+8. Dispatch each claimed card into its isolated workspace.
+9. Record status, attempt count, workspace path, heartbeat, and latest error
+   back to `.t3/agent-board.json`.
+
+Retry behavior:
+
+- Clean worker exits should schedule a short continuation check so the runner
+  can confirm whether the card is actually terminal or still needs another
+  turn.
+- Failure retries should use exponential backoff capped by
+  `agent.max_retry_backoff_ms`.
+- Routine repair attempts are capped by `agent.max_repair_cycles`.
+- Retry state is orchestrator-owned runtime state and should be reflected in
+  board fields such as attempt count, heartbeat, and current error.
+
+Reconciliation behavior:
+
+- If a running card is moved to `Done`, `Canceled`, `Blocked`, or
+  `Needs Decision`, stop the active worker safely.
+- If a running card loses eligibility, release the claim and preserve the
+  workspace unless cleanup is explicitly safe.
+- If the runner restarts, recover from `.t3/agent-board.json` and existing
+  workspaces. Exact in-memory scheduler state does not need to survive restart.
+- Invalid workflow reloads must not crash an active session. Keep using the
+  last known good workflow and surface the validation error.
+
 ## Workspace Rules
 
 Each runnable card gets an isolated card workspace. Agents must not work
@@ -303,6 +390,27 @@ a low-risk documentation task.
 
 The board runner should record each card's workspace path, branch name when
 applicable, and current run IDs in `.t3/agent-board.json`.
+
+Workspace keys should be deterministic and safe for filesystem use. Derive the
+key from the stable board card ID by replacing any character outside
+`[A-Za-z0-9._-]` with `_`, then create the card workspace under
+`workspace.root`.
+
+Workspaces are reused across retries for the same card. Successful runs do not
+delete workspaces automatically. Cleanup is allowed only when the card is in a
+terminal state and no active review, merge, or human inspection still needs the
+workspace.
+
+If workspace hooks are added later, use the Symphony hook names and semantics:
+
+- `hooks.after_create`: run only when a workspace is newly created; failure
+  aborts the attempt.
+- `hooks.before_run`: run before each implementation/review attempt; failure
+  aborts the attempt.
+- `hooks.after_run`: run after success, failure, timeout, or cancellation;
+  failure is logged but does not overwrite the run result.
+- `hooks.before_remove`: run before deleting a workspace; failure is logged and
+  cleanup may continue only when the workflow explicitly allows it.
 
 ## Parallelism Rules
 
@@ -348,6 +456,31 @@ Before a card becomes `Done`, T3 Code or the active agents must update:
 If the work changes project language, workflow rules, architecture direction, or
 planning status, update the relevant context, workflow, project, slice, or task
 documents before closing the card.
+
+## Workpad And Proof Ledger
+
+Symphony's Linear workflow uses one persistent workpad comment per issue. This
+fork mirrors that idea with one persistent task record per board card.
+
+For each runnable card:
+
+- Find or create the linked task record before implementation.
+- Treat that task record as the persistent workpad and proof ledger.
+- Keep plan, acceptance criteria, validation, notes, blockers, and final proof
+  updated in that one record.
+- Do not scatter progress across unrelated comments, chat turns, or ad hoc
+  markdown files.
+- Keep `.t3/agent-board.json` synchronized with task-record state so the
+  visual board reflects the proof ledger.
+
+Before moving to `Review` or `Done`, the task record must show:
+
+- completed plan checklist
+- completed acceptance criteria
+- validation commands/results
+- changed files summary
+- review-agent result
+- unresolved gaps or explicit statement that none remain
 
 ## Installable Planning Stack
 

@@ -64,6 +64,8 @@ The board is meant to be the visual proof ledger. The markdown files are the dur
 - `PROJECT.md`: high-level project intent for this planning fork.
 - `CONTEXT.md`: domain language and architecture notes.
 - `docs/agents/project-master-plan.md`: planning-system master plan.
+- `docs/agents/symphony-conformance.md`: mapping between this fork and OpenAI
+  Symphony's orchestration model.
 - `docs/agents/slices/`: slice-level plans.
 - `docs/agents/tasks/`: task records.
 - `docs/agents/templates/`: portable templates for handoffs, reports, reviews, and example board data.
