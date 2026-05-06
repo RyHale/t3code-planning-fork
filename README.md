@@ -4,7 +4,21 @@ This is an experimental public fork of [T3 Code](https://github.com/pingdotgg/t3
 
 The goal is to make T3 Code behave more like a supervisor console: the user talks to an architectural/orchestration agent, the agent keeps a concise planning ledger up to date, and implementation work can be handed to bounded worker agents with clearer proof-of-done expectations.
 
-![Planning board dependency tree](./docs/assets/planning-board.png)
+## Planning Views
+
+These screenshots use local demo board data to show the intended feature surface.
+
+### Kanban
+
+![Planning Kanban view](./docs/assets/planning-kanban.png)
+
+### Planning Table
+
+![Planning table view](./docs/assets/planning-table.png)
+
+### Dependency Tree
+
+![Planning dependency tree view](./docs/assets/planning-dependency-tree.png)
 
 ## What Is Different
 
