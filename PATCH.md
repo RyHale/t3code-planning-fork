@@ -33,6 +33,11 @@ patch is installed elsewhere:
 - `docs/agents/templates/` when present
 - `.t3/agent-board.json`
 
+Public repo note: upstream/internal `.docs/`, `.plans/`, `.cursor/`, and
+`.vscode/` folders are intentionally omitted from this fork's published branch.
+They are not required for the Planning patch and make the public repository
+harder to inspect.
+
 ## Core Integration Points
 
 The current patch attaches to upstream T3 Code through these areas:

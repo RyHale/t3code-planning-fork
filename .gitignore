@@ -24,3 +24,7 @@ __screenshots__/
 squashfs-root/
 .vercel
 .github/workflows/
+.cursor/
+.docs/
+.plans/
+.vscode/

@@ -1,63 +1,105 @@
-# T3 Code
+# T3 Code Planning Fork
 
-T3 Code is a minimal web GUI for coding agents (currently Codex and Claude, more coming soon).
+This is an experimental public fork of [T3 Code](https://github.com/pingdotgg/t3code) that adds a project-local planning layer for AI-assisted software work.
 
-## Installation
+The goal is to make T3 Code behave more like a supervisor console: the user talks to an architectural/orchestration agent, the agent keeps a concise planning ledger up to date, and implementation work can be handed to bounded worker agents with clearer proof-of-done expectations.
 
-> [!WARNING]
-> T3 Code currently supports Codex, Claude, and OpenCode.
-> Install and authenticate at least one provider before use:
->
-> - Codex: install [Codex CLI](https://developers.openai.com/codex/cli) and run `codex login`
-> - Claude: install [Claude Code](https://claude.com/product/claude-code) and run `claude auth login`
-> - OpenCode: install [OpenCode](https://opencode.ai) and run `opencode auth login`
+![Planning board dependency tree](./docs/assets/planning-board.png)
 
-### Run without installing
+## What Is Different
 
-```bash
-npx t3
+This fork adds:
+
+- A `Planning` project tab next to `Chat`.
+- A project-local board file at `.t3/agent-board.json`.
+- Kanban, Planning table, and Dependency tree views over the same board data.
+- Card detail editing for intent, acceptance criteria, constraints, non-goals, dependencies, area, slice, and slice plan.
+- Server-side board load/save/claim APIs.
+- Shared board contracts in `packages/contracts`.
+- Supervisor-first workflow docs in `AGENTS.md` and `WORKFLOW.md`.
+- Worker handoff, worker report, review report, and board example templates under `docs/agents/templates/`.
+- A `Break` button that disables the extra Planning features at runtime if the forked UI breaks during an active session.
+- `PATCH.md`, which documents the patch surface so this fork can be repaired after upstream T3 Code changes.
+
+This fork does **not** add an official plugin system. T3 Code does not currently support add-ons, so this is a modified fork rather than a drop-in extension.
+
+## Why This Exists
+
+Long AI coding sessions tend to lose context. When the plan and codebase get large, agents can forget dependencies, rush implementation, skip documentation, or mark work done without enough proof.
+
+This fork experiments with a different workflow:
+
+```text
+User request
+  -> Supervisor / architectural pass
+  -> Board card and task record
+  -> Worker handoff packet
+  -> Fresh implementation agent
+  -> Worker report
+  -> Review / audit
+  -> Supervisor updates proof ledger
 ```
 
-### Desktop app
+The board is meant to be the visual proof ledger. The markdown files are the durable reasoning layer.
 
-Install the latest version of the desktop app from [GitHub Releases](https://github.com/pingdotgg/t3code/releases), or from your favorite package registry:
+## Important Files
 
-#### Windows (`winget`)
+- `PATCH.md`: repair map for this fork.
+- `WORKFLOW.md`: project-local workflow rules.
+- `AGENTS.md`: agent operating rules, including supervisor-first behavior.
+- `PROJECT.md`: high-level project intent for this planning fork.
+- `CONTEXT.md`: domain language and architecture notes.
+- `docs/agents/project-master-plan.md`: planning-system master plan.
+- `docs/agents/slices/`: slice-level plans.
+- `docs/agents/tasks/`: task records.
+- `docs/agents/templates/`: portable templates for handoffs, reports, reviews, and example board data.
+- `packages/contracts/src/agentBoard.ts`: board schema and shared contract.
+- `apps/server/src/agentBoard/`: server board file service.
+- `apps/web/src/components/AgentBoardPanel.tsx`: Planning UI.
+- `apps/web/src/components/ChatView.tsx`: Planning tab and break-glass integration.
 
-```bash
-winget install T3Tools.T3Code
-```
+Runtime board files under `.t3/` are intentionally ignored. Use [docs/agents/templates/agent-board.example.json](./docs/agents/templates/agent-board.example.json) as the public example shape.
 
-#### macOS (Homebrew)
+## Running Locally
 
-```bash
-brew install --cask t3-code
-```
+Install provider CLIs first:
 
-#### Arch Linux (AUR)
+- Codex: install [Codex CLI](https://developers.openai.com/codex/cli) and run `codex login`
+- Claude: install [Claude Code](https://claude.com/product/claude-code) and run `claude auth login`
+- OpenCode: install [OpenCode](https://opencode.ai) and run `opencode auth login`
 
-```bash
-yay -S t3code-bin
-```
-
-## Some notes
-
-We are very very early in this project. Expect bugs.
-
-We are not accepting contributions yet.
-
-Observability guide: [docs/observability.md](./docs/observability.md)
-
-## If you REALLY want to contribute still.... read this first
-
-Before local development, prepare the environment and install dependencies:
+Then run:
 
 ```bash
-# Optional: only needed if you use mise for dev tool management.
-mise install
-bun install .
+bun install
+bun dev
 ```
 
-Read [CONTRIBUTING.md](./CONTRIBUTING.md) before opening an issue or PR.
+This is safest as a separate checkout beside your normal T3 Code install.
 
-Need support? Join the [Discord](https://discord.gg/jn4EGJjrvv).
+```text
+T3code-official/
+T3code-planning-fork/
+```
+
+## Quality Gates
+
+Before considering changes complete:
+
+```bash
+bun fmt
+bun lint
+bun typecheck
+```
+
+Do not use `bun test` in this repo. Use `bun run test` or package-local Vitest commands.
+
+## Public Fork Notes
+
+This repository intentionally omits GitHub Actions workflow files from the initial public push because the publishing token used here did not have GitHub `workflow` scope.
+
+The upstream/internal `.docs/`, `.plans/`, `.cursor/`, and `.vscode/` folders were also removed from the public branch to keep the fork easier to inspect. Planning-fork documentation lives in `PATCH.md`, `WORKFLOW.md`, `PROJECT.md`, `CONTEXT.md`, and `docs/agents/`.
+
+## Upstream
+
+Original T3 Code README content, release notes, and provider docs remain in this repository where still relevant. This fork is experimental and should be expected to break when upstream T3 Code changes core routing, RPC, chat layout, or provider orchestration.
